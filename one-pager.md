@@ -18,7 +18,14 @@ All quotes and metrics are made up.
 
 - "I spend longer finding the right policy page than writing the reply." (made up)
 - "When an enquiry has a photo, I open it and retype what it says." (made up)
-- Enquiries answered within SLA: 72%. Average first reply: 3 days. Minutes per policy search: 12. Enquiries with an image: 1 in 5. (all made up)
+Baselines and targets (all made up):
+
+| Metric | Baseline | Target |
+|---|---|---|
+| Enquiries answered within SLA | 72% | 90% (proposed) |
+| Average first reply | 3 days | 1 working day or less |
+| Minutes per policy search | 12 | Under 3 (proposed) |
+| Enquiries with an image | 1 in 5 | No target. Images are out of scope for now. |
 
 Hypothesis: Officers will send an AI-drafted first reply after a light edit when every draft cites the policy page it used.
 
@@ -95,14 +102,22 @@ Coherent actions:
 
 ## Metrics plan and stop line
 
-Measure across many officers, per officer and combined:
-- Share of drafts sent as is, after a light edit, and after a heavy rewrite. Target: 7 in 10 after a light edit (made up).
-- Share of planted errors approved. Target: under 1 in 10 (made up).
-- Time to first action. Signal: over 30 seconds.
-- Client SLA clock: from the moment the enquiry arrives to the approved reply. This is separate from the officer's time.
-- Baseline: 72% within SLA, 3-day average first reply (made up).
+Measure across many officers, per officer and combined. All numbers are made up.
 
-Stop line: fewer than 5 in 10 drafts sent after a light edit, or any fake page or passage reaching approval.
+| Metric | Target | Stop line |
+|---|---|---|
+| Drafts sent as is or after a light edit | 7 in 10 | Below 5 in 10 |
+| Drafts approved as is, with no edit | 6 in 10 by the end of the pilot | None set |
+| Planted errors approved | Under 1 in 10 | Any fake page or passage reaches approval |
+| Citation check on made-up fakes | 3 of 3 flagged, 0 false alarms | Any fake not flagged |
+| Time to first action | Under 30 seconds | Officers regularly stuck past 30 seconds |
+| Client SLA clock, from arrival to approved reply | 1 working day or less | Not improving against the 3-day baseline |
+
+The client SLA clock starts when the enquiry arrives, and is separate from the officer's time.
+
+Baseline: 72% within SLA, 3-day average first reply (made up).
+
+Stop line summary: fewer than 5 in 10 drafts sent after a light edit, or any fake page or passage reaching approval.
 
 ## Evals and gates
 
