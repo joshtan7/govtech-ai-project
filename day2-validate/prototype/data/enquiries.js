@@ -7,12 +7,25 @@
 // confidence: made-up score (0 to 100) for a cited line. Below CONFIDENCE_THRESHOLD is flagged.
 // closest: the three closest policy pages, shown when there is no draft.
 
+// Fixed list of 6 made-up topics. An enquiry has one topic only.
+// An enquiry whose topic is missing or not on this list shows under "Other".
+const TOPICS = [
+  { id: "address", label: "Address change" },
+  { id: "card", label: "Replacement card" },
+  { id: "hours", label: "Opening hours" },
+  { id: "forms", label: "Choosing a form" },
+  { id: "regulatory", label: "Regulator and legal" },
+  { id: "letters", label: "Letters and notices" }
+];
+const OTHER_TOPIC = { id: "other", label: "Other" };
+
 // Drafts start only at or above this overall confidence (made up).
 const CONFIDENCE_THRESHOLD = 90;
 
 const ENQUIRIES = [
   {
     id: "ENQ-001",
+    topic: "address",
     subject: "How do I change my registered address? (made up)",
     sender: "Resident A (made up)",
     received: "Mon 09:12 (made up)",
@@ -28,6 +41,7 @@ const ENQUIRIES = [
   },
   {
     id: "ENQ-002",
+    topic: "card",
     subject: "Fee for replacing a lost card (made up)",
     sender: "Resident B (made up)",
     received: "Mon 09:40 (made up)",
@@ -43,6 +57,7 @@ const ENQUIRIES = [
   },
   {
     id: "ENQ-003",
+    topic: "hours",
     subject: "Opening hours for the front desk (made up)",
     sender: "Resident C (made up)",
     received: "Mon 10:05 (made up)",
@@ -57,6 +72,7 @@ const ENQUIRIES = [
   },
   {
     id: "ENQ-004",
+    topic: "forms",
     subject: "Which form applies to my situation? (made up)",
     sender: "Resident D (made up)",
     received: "Mon 10:31 (made up)",
@@ -68,6 +84,7 @@ const ENQUIRIES = [
   },
   {
     id: "ENQ-005",
+    topic: "letters",
     subject: "Photo of a letter I received, what does it mean? (made up)",
     sender: "Resident E (made up)",
     received: "Mon 11:02 (made up)",
@@ -79,6 +96,7 @@ const ENQUIRIES = [
   },
   {
     id: "ENQ-006",
+    topic: "regulatory",
     subject: "A regulator asked me to respond, what do I do? (made up)",
     sender: "Resident F (made up)",
     received: "Mon 11:20 (made up)",
@@ -104,6 +122,7 @@ const ENQUIRIES = [
   },
   {
     id: "ENQ-008",
+    topic: "card",
     subject: "Card fee and delivery (made up)",
     sender: "Resident H (made up)",
     received: "Mon 12:10 (made up)",

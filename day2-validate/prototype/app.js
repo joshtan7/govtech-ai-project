@@ -9,6 +9,7 @@ const state = {
   editing: {},          // enquiry id -> true while its lines are editable
   removed: {},          // enquiry id -> { lineIndex: true } for lines the officer removed
   filter: "all",        // "all", "todo" or "done"
+  topic: "all",         // "all", a topic id, or "other"
   query: "",
   // Per-enquiry result: { outcome, firstActionSec }
   results: {}
@@ -89,14 +90,37 @@ function renderTally() {
 
 function isDone(id) { return !!state.results[id]; }
 
-function visibleEnquiries() {
+// The one topic of an enquiry. Anything not on the fixed list goes under Other.
+function topicOf(enq) {
+  const hit = TOPICS.find(function (t) { return t.id === enq.topic; });
+  return hit || OTHER_TOPIC;
+}
+
+// Matches the status filter and the search box, but not the topic filter.
+function matchesStatusAndSearch(e) {
   const q = state.query.trim().toLowerCase();
+  if (state.filter === "todo" && isDone(e.id)) return false;
+  if (state.filter === "done" && !isDone(e.id)) return false;
+  if (!q) return true;
+  return (e.id + " " + e.subject + " " + e.sender + " " + topicOf(e).label).toLowerCase().indexOf(q) !== -1;
+}
+
+function visibleEnquiries() {
   return ENQUIRIES.filter(function (e) {
-    if (state.filter === "todo" && isDone(e.id)) return false;
-    if (state.filter === "done" && !isDone(e.id)) return false;
-    if (!q) return true;
-    return (e.id + " " + e.subject + " " + e.sender).toLowerCase().indexOf(q) !== -1;
+    if (!matchesStatusAndSearch(e)) return false;
+    return state.topic === "all" || topicOf(e).id === state.topic;
   });
+}
+
+// How many enquiries each topic has under the current status filter and search. Can be 0.
+function topicCounts() {
+  const counts = { all: 0, other: 0 };
+  TOPICS.forEach(function (t) { counts[t.id] = 0; });
+  ENQUIRIES.filter(matchesStatusAndSearch).forEach(function (e) {
+    counts.all += 1;
+    counts[topicOf(e).id] += 1;
+  });
+  return counts;
 }
 
 function selectCase(id) {
@@ -169,6 +193,15 @@ function renderQueue() {
   chips.id = "queue-chips";
   aside.append(chips);
 
+  const topicSel = el("select", "topic-select");
+  topicSel.id = "topic-select";
+  topicSel.setAttribute("aria-label", "Filter by policy topic");
+  topicSel.addEventListener("change", function () {
+    state.topic = topicSel.value;
+    refreshQueue();
+  });
+  aside.append(topicSel);
+
   const list = el("ul", "queue-list");
   list.id = "queue-list";
   aside.append(list);
@@ -194,9 +227,23 @@ function refreshQueue() {
     chips.append(b);
   });
 
+  // Topic filter, with a count per topic. A count of 0 is shown, not hidden.
+  const sel = document.getElementById("topic-select");
+  if (sel) {
+    const counts = topicCounts();
+    sel.textContent = "";
+    [{ id: "all", label: "All topics" }].concat(TOPICS, [OTHER_TOPIC]).forEach(function (t) {
+      const o = el("option", null, t.label + " (" + counts[t.id] + ")");
+      o.value = t.id;
+      if (state.topic === t.id) o.selected = true;
+      sel.append(o);
+    });
+    sel.value = state.topic;
+  }
+
   list.textContent = "";
   const items = visibleEnquiries();
-  if (items.length === 0) list.append(el("li", "queue-empty", "No cases match."));
+  if (items.length === 0) list.append(el("li", "queue-empty", state.topic === "all" ? "No cases match." : "No cases match this topic (0)."));
 
   items.forEach(function (enq) {
     const li = el("li", "q-item" + (enq.id === state.currentId ? " q-active" : "") + (isDone(enq.id) ? " q-done" : ""));
@@ -210,6 +257,7 @@ function refreshQueue() {
     li.append(el("span", "q-subject", enq.subject));
 
     const tags = el("div", "q-tags");
+    tags.append(el("span", "tag tag-topic", topicOf(enq).label));
     tags.append(el("span", "tag tag-" + enq.status, STATUS_LABELS[enq.status]));
     if (enq.draft) tags.append(confBadge(draftConfidence(enq)));
     if (enq.hasImage) tags.append(el("span", "tag tag-image", "Image"));
@@ -265,6 +313,9 @@ function renderCase() {
   const card = el("section", "card");
   card.append(el("h2", null, enq.id + " · " + enq.subject));
   card.append(el("p", "row-meta", enq.sender + " · " + enq.received));
+  const topicLine = el("p", "topic-line");
+  topicLine.append(el("span", "tag tag-topic", "Topic: " + topicOf(enq).label));
+  card.append(topicLine);
   card.append(el("p", null, enq.body));
   if (enq.hasImage) {
     card.append(el("div", "image-card", "Attached image (made up). The current tools cannot read this image, so an officer must open it."));

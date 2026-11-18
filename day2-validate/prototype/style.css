@@ -437,3 +437,19 @@ li .policy-inline { margin: 8px 0 12px; }
 .tests th { text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); padding: 6px 10px; border-bottom: 1px solid var(--line); }
 .tests td { vertical-align: top; padding: 10px; border-bottom: 1px solid #eef0f6; }
 .tests td:first-child { color: var(--muted); font-weight: 700; }
+
+/* ---------- Topic filter ---------- */
+
+.topic-select {
+  font: inherit;
+  font-size: 0.85rem;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f8f9fc;
+  color: var(--text);
+}
+.topic-select:focus { outline: 2px solid var(--accent); outline-offset: 1px; background: #ffffff; }
+.tag-topic { background: #f1f5f9; color: #334155; }
+.topic-line { margin: 0 0 10px; }
