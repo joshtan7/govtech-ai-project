@@ -6,6 +6,7 @@ const state = {
   openedAt: {},         // enquiry id -> ms timestamp of the first time it was opened
   edits: {},            // enquiry id -> edited draft lines (kept when you switch cases)
   editing: {},          // enquiry id -> true while its lines are editable
+  removed: {},          // enquiry id -> { lineIndex: true } for lines the officer removed
   filter: "all",        // "all", "todo" or "done"
   query: "",
   // Per-enquiry result: { outcome, firstActionSec }
@@ -52,6 +53,7 @@ function renderTally() {
     if (r.firstActionSec > 30) slow += 1;
   });
 
+  const fixed = Object.keys(state.results).filter(function (id) { return state.results[id].hadProblem; }).length;
   const drafted = counts["approved-as-is"] + counts["approved-light"] + counts["rewritten"];
   const sentLight = counts["approved-as-is"] + counts["approved-light"];
 
@@ -62,6 +64,9 @@ function renderTally() {
     { label: "Heavy rewrite", value: String(counts["rewritten"]) },
     { label: "Handed off", value: String(counts["handed-off"]) },
     { label: "First action over 30s", value: String(slow) },
+    { label: "Check flags the made-up fakes", value: checkStats().caught + " of " + checkStats().planted, sub: "Self-test on load. Success: all" },
+    { label: "False alarms on clean lines", value: String(checkStats().falseAlarms), sub: "Self-test on load. Success: 0" },
+    { label: "Fakes fixed before approval", value: String(fixed), sub: "This session" },
     {
       label: "Sent as is or after light edit",
       value: drafted === 0 ? "n/a" : sentLight + " of " + drafted,
@@ -205,6 +210,7 @@ function refreshQueue() {
     tags.append(el("span", "tag tag-" + enq.status, STATUS_LABELS[enq.status]));
     if (enq.draft) tags.append(confBadge(draftConfidence(enq)));
     if (enq.hasImage) tags.append(el("span", "tag tag-image", "Image"));
+    if (enquiryHasUnresolvedProblem(enq) && !isDone(enq.id)) tags.append(el("span", "tag tag-check", "Citation check"));
     if (hasEdits(enq.id) && !isDone(enq.id)) tags.append(el("span", "tag tag-edited", "Edited"));
     if (isDone(enq.id)) tags.append(el("span", "tag tag-done", "✓ " + OUTCOME_SHORT[state.results[enq.id].outcome]));
     li.append(tags);
@@ -284,6 +290,59 @@ document.addEventListener("keydown", function (e) {
   if (e.key === "k" || e.key === "K") moveCase(-1);
 });
 
+// ---------- Citation check (tests the "AI invents policy" risk) ----------
+
+// Checks one cited line against the policy library. Returns a list of problems.
+// 1. The policy page must exist. 2. The passage must exist on that page.
+// 3. Every number in the line must appear in the cited passage (catches a wrong fee or deadline).
+function numbersIn(text) {
+  return (text.match(/\d+(?:\.\d+)?/g) || []);
+}
+
+function checkLine(line, text) {
+  if (!line.cite) return [];
+  const policy = byId(POLICIES, line.cite.policy);
+  if (!policy) return ["Policy page " + line.cite.policy + " is not in the policy library."];
+  const passage = byId(policy.passages, line.cite.passage);
+  if (!passage) return ["Passage " + line.cite.passage + " does not exist on " + line.cite.policy + "."];
+  const known = numbersIn(passage.text);
+  const bad = numbersIn(text).filter(function (n) { return known.indexOf(n) === -1; });
+  if (bad.length > 0) return ["The line says " + bad.join(", ") + ", which the cited passage does not say."];
+  return [];
+}
+
+function isTestCase(id) {
+  const enq = byId(ENQUIRIES, id);
+  return !!(enq && enq.draft && enq.draft.some(function (l) { return l.planted; }));
+}
+
+function enquiryHasUnresolvedProblem(enq) {
+  if (!enq.draft) return false;
+  const texts = state.edits[enq.id] || enq.draft.map(function (l) { return l.text; });
+  return enq.draft.some(function (l, i) { return !isRemoved(enq.id, i) && checkLine(l, texts[i]).length > 0; });
+}
+
+function isRemoved(id, i) {
+  return !!(state.removed[id] && state.removed[id][i]);
+}
+
+function enquiryHasProblem(enq) {
+  return !!enq.draft && enq.draft.some(function (l) { return checkLine(l, l.text).length > 0; });
+}
+
+// Facilitator numbers for the test: how many planted fakes the check caught, and false alarms.
+function checkStats() {
+  let planted = 0, caught = 0, falseAlarms = 0;
+  ENQUIRIES.forEach(function (enq) {
+    (enq.draft || []).forEach(function (l) {
+      const flagged = checkLine(l, l.text).length > 0;
+      if (l.planted) { planted += 1; if (flagged) caught += 1; }
+      else if (flagged) falseAlarms += 1;
+    });
+  });
+  return { planted: planted, caught: caught, falseAlarms: falseAlarms };
+}
+
 // ---------- Confidence and inline policy details ----------
 
 function confLevel(score) {
@@ -308,18 +367,27 @@ function confBadge(score, prefix) {
 // Shows the page header and the cited passage. "Show all passages" reveals the rest of the page.
 function policyBlock(policyId, highlightId) {
   const policy = byId(POLICIES, policyId);
+  if (!policy) {
+    const missing = el("div", "policy-inline policy-missing");
+    missing.append(el("p", "policy-missing-title", policyId + " · not in the policy library"));
+    missing.append(el("p", "policy-meta", "The draft cites a page that does not exist (made-up library). Do not rely on this line."));
+    return missing;
+  }
   const box = el("div", "policy-inline");
   const head = el("div", "policy-head");
   head.append(el("span", "policy-id", policy.id), el("span", "policy-title", policy.title));
   box.append(head);
   box.append(el("p", "policy-meta", "Last updated " + policy.updated + " · Owner: " + policy.owner));
 
+  if (highlightId && !byId(policy.passages, highlightId)) {
+    box.append(el("p", "policy-missing-title", "Cited passage " + highlightId + " does not exist on this page."));
+  }
   const others = [];
   policy.passages.forEach(function (p) {
     const cited = highlightId === p.id;
     const node = el("p", "passage" + (cited ? " highlight" : ""));
     node.append(el("span", "passage-id", p.id + (cited ? " · cited" : "") + " "), document.createTextNode(p.text));
-    if (highlightId && !cited) { node.hidden = true; others.push(node); }
+    if (highlightId && !cited && byId(policy.passages, highlightId)) { node.hidden = true; others.push(node); }
     box.append(node);
   });
 
@@ -354,24 +422,32 @@ function renderDraft(enq) {
   top.append(confBadge(draftConfidence(enq), "Draft confidence: "));
   box.append(top);
 
+  const banner = el("div", "check-banner");
+  banner.id = "check-banner";
+  box.append(banner);
+
   const lines = el("div", "draft-lines");
   enq.draft.forEach(function (line, i) {
     const flagged = line.cite && line.confidence < CONFIDENCE_THRESHOLD;
     const wrap = el("div", "draft-block");
+    if (isRemoved(enq.id, i)) wrap.hidden = true;
     const row = el("p", "draft-line");
     const shown = editedLines ? editedLines[i] : line.text;
     const text = el("span", "draft-text" + (flagged ? " low-conf" : ""), shown);
     text.dataset.index = String(i);
     text.contentEditable = editing ? "true" : "false";
-    text.addEventListener("input", function () { saveEdits(enq); refreshQueue(); });
+    text.addEventListener("input", function () { saveEdits(enq); refreshDraftChecks(enq); refreshQueue(); });
     row.append(text);
 
+    const problem = el("div", "line-problem");
+    problem.dataset.index = String(i);
+    wrap.dataset.index = String(i);
     if (line.cite) {
       const label = line.cite.policy + " " + line.cite.passage;
       const c = el("button", "cite", label + " ▾");
       c.dataset.label = label;
       row.append(" ", c, " ", confBadge(line.confidence));
-      wrap.append(row);
+      wrap.append(row, problem);
       const block = policyBlock(line.cite.policy, line.cite.passage);   // expanded by default
       wrap.append(block);
       c.addEventListener("click", function () { togglePolicy(c, block); });
@@ -392,6 +468,7 @@ function renderDraft(enq) {
     actions.append(el("span", "tag tag-done", OUTCOME_LABELS[result.outcome]), nextCaseButton());
   } else {
     const approve = el("button", "btn btn-primary", "Approve (does not send)");
+    approve.id = "approve-btn";
     approve.addEventListener("click", function () { approveDraft(enq); });
 
     // Edit switches the lines to editable in place, without redrawing, so typing is kept.
@@ -406,6 +483,7 @@ function renderDraft(enq) {
     const restore = el("button", "btn", "Restore original");
     restore.addEventListener("click", function () {
       delete state.edits[enq.id];
+      delete state.removed[enq.id];
       state.editing[enq.id] = false;
       render();
     });
@@ -415,6 +493,55 @@ function renderDraft(enq) {
   box.append(actions);
   box.append(el("p", "note", "Approve only records your decision here. Nothing is sent and the case is not marked resolved. Switching cases keeps your edits."));
   return box;
+}
+
+// Current text of each line: what is on screen if the draft is open, else saved edits, else the original.
+function linesNow(enq) {
+  const nodes = document.querySelectorAll(".draft-text");
+  if (state.currentId === enq.id && nodes.length === enq.draft.length) {
+    return Array.prototype.map.call(nodes, function (n) { return n.textContent.trim(); });
+  }
+  return state.edits[enq.id] || enq.draft.map(function (l) { return l.text; });
+}
+
+// Re-run the citation check on the lines as they stand. Shows a warning under each bad line.
+// Approve is blocked until every flagged line is fixed or removed, so a fake citation cannot be approved by accident.
+function refreshDraftChecks(enq) {
+  const texts = linesNow(enq);
+  let total = 0;
+  const slots = document.querySelectorAll(".line-problem");
+  slots.forEach(function (slot) {
+    const i = Number(slot.dataset.index);
+    const problems = isRemoved(enq.id, i) ? [] : checkLine(enq.draft[i], texts[i]);
+    slot.textContent = "";
+    slot.className = "line-problem" + (problems.length ? " line-problem-on" : "");
+    problems.forEach(function (p) { slot.append(el("p", "line-problem-text", "⚠ Citation check failed: " + p)); });
+    if (problems.length && !state.results[enq.id]) {
+      const rm = el("button", "btn btn-small", "Remove this line");
+      rm.addEventListener("click", function () {
+        state.removed[enq.id] = state.removed[enq.id] || {};
+        state.removed[enq.id][i] = true;
+        saveEdits(enq);
+        render();
+      });
+      slot.append(rm);
+    }
+    total += problems.length;
+  });
+
+  const banner = document.getElementById("check-banner");
+  if (banner) {
+    banner.textContent = "";
+    banner.className = "check-banner " + (total ? "check-bad" : "check-ok");
+    banner.append(document.createTextNode(total
+      ? "Citation check: " + total + " problem" + (total === 1 ? "" : "s") + " found. Fix or remove the flagged line" + (total === 1 ? "" : "s") + " before approving."
+      : "Citation check: every cited policy page, passage and number matches the policy library."));
+  }
+  const approve = document.getElementById("approve-btn");
+  if (approve) {
+    approve.disabled = total > 0;
+    approve.title = total ? "Fix the flagged lines first" : "";
+  }
 }
 
 // Remember the lines as typed, so switching cases does not lose them.
@@ -480,15 +607,18 @@ function changedShare(original, edited) {
 }
 
 function approveDraft(enq) {
-  const original = enq.draft.map(function (l) { return l.text; });
-  const edited = currentDraftTexts();
+  const stillBad = linesNow(enq).some(function (t, i) { return !isRemoved(enq.id, i) && checkLine(enq.draft[i], t).length > 0; });
+  if (stillBad) return;   // blocked: a flagged citation is still in the draft
+  const keep = enq.draft.map(function (l, i) { return !isRemoved(enq.id, i); });
+  const original = enq.draft.map(function (l) { return l.text; }).filter(function (t, i) { return keep[i]; });
+  const edited = currentDraftTexts().filter(function (t, i) { return keep[i]; });
   const sameText = original.join("\n") === edited.join("\n");
   let outcome;
   if (sameText) outcome = "approved-as-is";
   else if (changedShare(original, edited) > 0.5) outcome = "rewritten";
   else outcome = "approved-light";
 
-  state.results[enq.id] = { outcome: outcome, firstActionSec: secondsSinceOpen(enq.id) };
+  state.results[enq.id] = { outcome: outcome, firstActionSec: secondsSinceOpen(enq.id), hadProblem: enquiryHasProblem(enq) };
   state.editing[enq.id] = false;
   render();
 }
@@ -497,6 +627,8 @@ function approveDraft(enq) {
 
 function render() {
   renderWorkspace();
+  const enq = state.currentId ? byId(ENQUIRIES, state.currentId) : null;
+  if (enq && enq.draft && !state.results[enq.id]) refreshDraftChecks(enq);
 }
 
 render();

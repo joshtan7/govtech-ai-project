@@ -3,6 +3,7 @@
 // Drafts are pre-written. No AI model is called.
 //
 // draft: lines of the reply. cite = { policy, passage } or null (greeting/closing only).
+// planted: marks a deliberately fake citation, for the hallucination test only (made up). Never shown to the officer.
 // confidence: made-up score (0 to 100) for a cited line. Below CONFIDENCE_THRESHOLD is flagged.
 // closest: the three closest policy pages, shown when there is no draft.
 
@@ -86,6 +87,35 @@ const ENQUIRIES = [
     body: "A regulator sent me a notice and I need to reply by next week. What should I do? (made up)",
     note: "This enquiry mentions a regulator. Policy says it goes to a human lead. No draft was written.",
     closest: ["POL-05", "POL-06", "POL-04"]
+  },
+  {
+    id: "ENQ-007",
+    subject: "Can I appeal a rejected application? (made up)",
+    sender: "Resident G (made up)",
+    received: "Mon 11:45 (made up)",
+    status: "draft-ready",
+    hasImage: false,
+    body: "My application was rejected. Can I appeal, and which form do I use? (made up)",
+    draft: [
+      { text: "Thank you for your enquiry about appealing a decision.", cite: null },
+      { text: "You can appeal within 30 days under the Appeals Policy.", cite: { policy: "POL-09", passage: "p1" }, confidence: 95, planted: "fake-page" },
+      { text: "Individual residents use Form A.", cite: { policy: "POL-04", passage: "p1" }, confidence: 94 }
+    ]
+  },
+  {
+    id: "ENQ-008",
+    subject: "Card fee and delivery (made up)",
+    sender: "Resident H (made up)",
+    received: "Mon 12:10 (made up)",
+    status: "draft-ready",
+    hasImage: false,
+    body: "How much is a replacement card and how will it be delivered? (made up)",
+    draft: [
+      { text: "Thank you for your enquiry about a replacement card.", cite: null },
+      { text: "Please report the loss before you request a replacement.", cite: { policy: "POL-02", passage: "p1" }, confidence: 96 },
+      { text: "The replacement card fee is $200 (made up).", cite: { policy: "POL-02", passage: "p2" }, confidence: 95, planted: "wrong-amount" },
+      { text: "Replacement cards are delivered by courier within 2 days (made up).", cite: { policy: "POL-02", passage: "p7" }, confidence: 93, planted: "fake-passage" }
+    ]
   }
 ];
 
