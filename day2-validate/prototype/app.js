@@ -10,6 +10,10 @@ const state = {
   removed: {},          // enquiry id -> { lineIndex: true } for lines the officer removed
   filter: "all",        // "all", "todo" or "done"
   topic: "all",         // "all", a topic id, or "other"
+  lookup: {},           // enquiry id -> { status: "ok" | "loading" | "failed", attempts }
+  typed: {},            // enquiry id -> text the officer typed while the lookup was down
+  forceFail: false,     // facilitator test control: policy lookup returns nothing for fee enquiries
+  lookupFails: 0,       // failed lookup attempts this session
   query: "",
   // Per-enquiry result: { outcome, firstActionSec }
   results: {}
@@ -69,6 +73,7 @@ function renderTally() {
     { label: "Check flags the made-up fakes", value: checkStats().caught + " of " + checkStats().planted, sub: "Self-test on load. Success: all" },
     { label: "False alarms on clean lines", value: String(checkStats().falseAlarms), sub: "Self-test on load. Success: 0" },
     { label: "Fakes fixed before approval", value: String(fixed), sub: "This session" },
+    { label: "Lookup attempts failed", value: String(state.lookupFails), sub: "This session" },
     {
       label: "Sent as is or after light edit",
       value: drafted === 0 ? "n/a" : sentLight + " of " + drafted,
@@ -82,6 +87,16 @@ function renderTally() {
     cards.append(card);
   });
   box.append(cards);
+
+  const ctl = el("label", "test-control");
+  const cb = el("input");
+  cb.type = "checkbox";
+  cb.id = "force-fail";
+  cb.checked = state.forceFail;
+  cb.addEventListener("change", function () { state.forceFail = cb.checked; });
+  ctl.append(cb, document.createTextNode(" Facilitator test control (made up): make the policy lookup return nothing for every fee enquiry"));
+  box.append(ctl);
+
   box.append(el("p", "note", "This session only, made up. Refreshing resets it. Nothing is uploaded."));
   return box;
 }
@@ -262,6 +277,9 @@ function refreshQueue() {
     if (enq.draft) tags.append(confBadge(draftConfidence(enq)));
     if (enq.hasImage) tags.append(el("span", "tag tag-image", "Image"));
     if (enquiryHasUnresolvedProblem(enq) && !isDone(enq.id)) tags.append(el("span", "tag tag-check", "Citation check"));
+    const lkq = state.lookup[enq.id];
+    if (lkq && lkq.status === "failed" && !isDone(enq.id)) tags.append(el("span", "tag tag-check", "Lookup failed"));
+    if (lkq && lkq.status === "loading") tags.append(el("span", "tag tag-edited", "Retrying"));
     if (hasEdits(enq.id) && !isDone(enq.id)) tags.append(el("span", "tag tag-edited", "Edited"));
     if (isDone(enq.id)) tags.append(el("span", "tag tag-done", "✓ " + OUTCOME_SHORT[state.results[enq.id].outcome]));
     li.append(tags);
@@ -402,6 +420,120 @@ function checkStats() {
   return { planted: planted, caught: caught, falseAlarms: falseAlarms };
 }
 
+// ---------- Policy lookup, with failure handling (PROMPTS.md Behavior) ----------
+
+// A lookup that fails or is retried takes this long (simulated). A first lookup that succeeds is instant.
+const LOOKUP_DELAY_MS = 600;
+
+// Fee enquiries are the ones the forced failure hits.
+function isFeeEnquiry(enq) {
+  return /\bfees?\b/i.test(enq.subject + " " + enq.body);
+}
+
+function runLookup(enq) {
+  const prev = state.lookup[enq.id];
+  const attempts = prev ? prev.attempts + 1 : 1;
+  const willFail = state.forceFail && isFeeEnquiry(enq);
+  if (!willFail && attempts === 1) {
+    state.lookup[enq.id] = { status: "ok", attempts: 1 };
+    return;
+  }
+  state.lookup[enq.id] = { status: "loading", attempts: attempts };
+  setTimeout(function () { finishLookup(enq, willFail); }, LOOKUP_DELAY_MS);
+}
+
+function ensureLookup(enq) {
+  if (!state.lookup[enq.id]) runLookup(enq);
+  return state.lookup[enq.id];
+}
+
+function finishLookup(enq, failed) {
+  const lk = state.lookup[enq.id];
+  lk.status = failed ? "failed" : "ok";
+  if (failed) state.lookupFails += 1;
+  if (state.tab !== "cases") return;
+  if (state.currentId === enq.id) renderKeepingFocus();
+  else refreshQueue();
+}
+
+// Redraw, but put the cursor back if the officer was typing in their own text box.
+function renderKeepingFocus() {
+  const active = document.activeElement;
+  const typing = !!(active && active.id === "typed-box");
+  render();
+  if (typing) {
+    const box = document.getElementById("typed-box");
+    if (box) {
+      box.focus();
+      if (box.setSelectionRange) box.setSelectionRange(box.value.length, box.value.length);
+    }
+  }
+}
+
+// The officer's own text. Saved on every keystroke, so a redraw or a failed lookup never loses it.
+function typedBox(enq, label) {
+  const wrap = el("div", "typed-wrap");
+  wrap.append(el("p", "typed-label", label));
+  const ta = el("textarea", "typed-box");
+  ta.id = "typed-box";
+  ta.setAttribute("aria-label", "Your own text");
+  ta.placeholder = "Type your own reply here. It is kept.";
+  ta.value = state.typed[enq.id] || "";
+  ta.addEventListener("input", function () { state.typed[enq.id] = ta.value; });
+  wrap.append(ta);
+  return wrap;
+}
+
+// Shown instead of the AI draft while the lookup has not returned a policy page.
+// Rule: never show a draft that cites no policy page.
+function renderLookupProblem(enq, lk) {
+  const result = state.results[enq.id];
+  const box = el("section", "card draft");
+  box.append(el("h2", null, "Draft reply"));
+
+  const msg = el("div", "lookup-banner lookup-" + lk.status);
+  msg.id = "lookup-banner";
+  if (lk.status === "loading") {
+    msg.textContent = lk.attempts === 1
+      ? "Looking up policy pages. The AI draft stays hidden until a page comes back."
+      : "Retrying the policy lookup (attempt " + lk.attempts + "). The AI draft stays hidden until a page comes back. You can keep typing. Your text is kept.";
+  } else if (lk.attempts >= 2) {
+    msg.textContent = "The policy lookup failed " + lk.attempts + " times in a row. No policy page came back, so the AI draft is hidden. Try again or hand this case to an officer. Your text is kept.";
+  } else {
+    msg.textContent = "The policy lookup failed. No policy page came back for this enquiry, so the AI draft is hidden. A draft must cite a policy page. Your text is kept. Try again.";
+  }
+  box.append(msg);
+
+  box.append(typedBox(enq, "Your own text (kept)"));
+
+  const actions = el("div", "actions");
+  if (result) {
+    actions.append(el("span", "tag tag-done", OUTCOME_LABELS[result.outcome]), nextCaseButton());
+  } else {
+    const retry = el("button", "btn btn-primary", lk.status === "loading" ? "Retrying…" : "Retry lookup");
+    retry.id = "retry-btn";
+    retry.disabled = lk.status === "loading";
+    retry.addEventListener("click", function () {
+      runLookup(enq);
+      renderKeepingFocus();
+    });
+    actions.append(retry);
+
+    if (lk.status === "failed" && lk.attempts >= 2) {
+      const route = el("button", "btn", "No policy page came back: hand off to an officer");
+      route.id = "lookup-route-btn";
+      route.addEventListener("click", function () {
+        state.results[enq.id] = { outcome: "handed-off", firstActionSec: secondsSinceOpen(enq.id), hadProblem: false };
+        render();
+      });
+      actions.append(route);
+    }
+  }
+  box.append(actions);
+  box.append(el("p", "note", "Nothing is sent. The AI draft returns when a policy page comes back."));
+  return box;
+}
+
 // ---------- Confidence and inline policy details ----------
 
 function confLevel(score) {
@@ -471,6 +603,8 @@ function togglePolicy(button, block) {
 
 // Draft with a citation after each line and the action buttons.
 function renderDraft(enq) {
+  const lk = ensureLookup(enq);
+  if (lk.status !== "ok") return renderLookupProblem(enq, lk);
   const result = state.results[enq.id];
   const editedLines = state.edits[enq.id];
   const editing = !!state.editing[enq.id] && !result;
@@ -520,6 +654,10 @@ function renderDraft(enq) {
 
   if (enq.draft.some(function (l) { return l.cite && l.confidence < CONFIDENCE_THRESHOLD; })) {
     box.append(el("p", "note", "Dotted underline = confidence below " + CONFIDENCE_THRESHOLD + "% (made up). Check that line against its cited passage."));
+  }
+
+  if ((state.typed[enq.id] || "").trim()) {
+    box.append(typedBox(enq, "Text you typed while the lookup was down. Kept here so nothing is lost."));
   }
 
   const actions = el("div", "actions");
@@ -837,7 +975,7 @@ function render() {
   if (state.tab === "context") { renderContext(); return; }
   renderWorkspace();
   const enq = state.currentId ? byId(ENQUIRIES, state.currentId) : null;
-  if (enq && enq.draft && !state.results[enq.id]) refreshDraftChecks(enq);
+  if (enq && enq.draft && !state.results[enq.id] && state.lookup[enq.id] && state.lookup[enq.id].status === "ok") refreshDraftChecks(enq);
 }
 
 render();
