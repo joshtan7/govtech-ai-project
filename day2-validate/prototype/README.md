@@ -13,7 +13,7 @@ An officer opens the inbox and works through 6 made-up enquiries.
 - **Drafts:** pre-written, with a citation after every claim. Click a citation to highlight the exact passage in the policy panel. Lower-confidence lines have a dotted underline.
 - **Approve, Edit, Restore original:** Approve only records the decision. Edit changes the lines in place. Restore original puts the draft back.
 - **No draft cases:** shows why, the three closest policy pages, and a hand-off button.
-- **Pilot tally:** at the bottom of the inbox. It counts drafts approved as is, after a light edit, and after a heavy rewrite, plus enquiries where the first action took over 30 seconds.
+- **Pilot tally:** at the top of the inbox. It counts drafts approved as is, after a light edit, and after a heavy rewrite, plus enquiries where the first action took over 30 seconds.
 
 An edit counts as a heavy rewrite when more than half the words are new. This is a rough rule for the prototype.
 

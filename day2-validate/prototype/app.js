@@ -37,7 +37,8 @@ function renderInbox() {
   const root = document.getElementById("app");
   root.textContent = "";
 
-  root.append(el("p", "count", ENQUIRIES.length + " enquiries"));
+  root.append(renderTally());
+  root.append(el("h2", "section-title", "Inbox · " + ENQUIRIES.length + " enquiries"));
   const list = el("ul", "inbox");
 
   ENQUIRIES.forEach(function (enq) {
@@ -67,19 +68,17 @@ function renderInbox() {
   });
 
   root.append(list);
-  root.append(renderTally());
 }
 
 // ---------- Tally (for the facilitator) ----------
 
 function renderTally() {
   const box = el("section", "tally");
-  box.append(el("h2", null, "Pilot tally (this session only, made up)"));
+  box.append(el("h2", "section-title", "Pilot tally"));
 
   const counts = { "approved-as-is": 0, "approved-light": 0, "rewritten": 0, "handed-off": 0 };
   let slow = 0;
-  const ids = Object.keys(state.results);
-  ids.forEach(function (id) {
+  Object.keys(state.results).forEach(function (id) {
     const r = state.results[id];
     counts[r.outcome] += 1;
     if (r.firstActionSec > 30) slow += 1;
@@ -88,21 +87,27 @@ function renderTally() {
   const drafted = counts["approved-as-is"] + counts["approved-light"] + counts["rewritten"];
   const sentLight = counts["approved-as-is"] + counts["approved-light"];
 
-  const table = el("table");
+  const cards = el("div", "stats");
   [
-    ["Approved as is", counts["approved-as-is"]],
-    ["Approved after light edit", counts["approved-light"]],
-    ["Approved after heavy rewrite", counts["rewritten"]],
-    ["Handed to an officer (no draft)", counts["handed-off"]],
-    ["Enquiries where first action took over 30 seconds", slow],
-    ["Drafts approved as is or after light edit", drafted === 0 ? "n/a" : sentLight + " of " + drafted + " (target 7 in 10, made up)"]
-  ].forEach(function (pair) {
-    const tr = el("tr");
-    tr.append(el("td", null, pair[0]), el("td", "num", String(pair[1])));
-    table.append(tr);
+    { label: "Approved as is", value: String(counts["approved-as-is"]) },
+    { label: "Light edit", value: String(counts["approved-light"]) },
+    { label: "Heavy rewrite", value: String(counts["rewritten"]) },
+    { label: "Handed off", value: String(counts["handed-off"]) },
+    { label: "First action over 30s", value: String(slow) },
+    {
+      label: "Sent as is or after light edit",
+      value: drafted === 0 ? "n/a" : sentLight + " of " + drafted,
+      sub: "Target 7 in 10 (made up)",
+      wide: true
+    }
+  ].forEach(function (s) {
+    const card = el("div", "stat" + (s.wide ? " stat-wide" : ""));
+    card.append(el("span", "stat-value", s.value), el("span", "stat-label", s.label));
+    if (s.sub) card.append(el("span", "stat-sub", s.sub));
+    cards.append(card);
   });
-  box.append(table);
-  box.append(el("p", "note", "Stays in this page. Refreshing resets it. Nothing is uploaded."));
+  box.append(cards);
+  box.append(el("p", "note", "This session only, made up. Refreshing resets it. Nothing is uploaded."));
   return box;
 }
 
