@@ -2,6 +2,7 @@
 // Reads ENQUIRIES and POLICIES from data/. No network calls. Nothing is sent.
 
 const state = {
+  tab: "cases",        // "cases" or "context"
   currentId: null,
   openedAt: {},         // enquiry id -> ms timestamp of the first time it was opened
   edits: {},            // enquiry id -> edited draft lines (kept when you switch cases)
@@ -99,6 +100,7 @@ function visibleEnquiries() {
 }
 
 function selectCase(id) {
+  state.tab = "cases";
   state.currentId = id;
   if (!state.openedAt[id]) state.openedAt[id] = Date.now();
   render();
@@ -138,6 +140,7 @@ function hasEdits(id) {
 function renderWorkspace() {
   const root = document.getElementById("app");
   root.textContent = "";
+  root.append(renderTabs());
   root.append(renderTally());
 
   const layout = el("div", "workspace");
@@ -286,6 +289,7 @@ document.addEventListener("keydown", function (e) {
   const t = e.target;
   if (t && (t.isContentEditable || t.tagName === "INPUT" || t.tagName === "TEXTAREA")) return;
   if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (state.tab !== "cases") return;
   if (e.key === "j" || e.key === "J") moveCase(1);
   if (e.key === "k" || e.key === "K") moveCase(-1);
 });
@@ -314,6 +318,10 @@ function checkLine(line, text) {
 function isTestCase(id) {
   const enq = byId(ENQUIRIES, id);
   return !!(enq && enq.draft && enq.draft.some(function (l) { return l.planted; }));
+}
+
+function citesMissingPage(enq) {
+  return !!enq.draft && enq.draft.some(function (l) { return l.cite && !byId(POLICIES, l.cite.policy); });
 }
 
 function enquiryHasUnresolvedProblem(enq) {
@@ -489,6 +497,18 @@ function renderDraft(enq) {
     });
 
     actions.append(approve, edit, restore);
+
+    // Rule 4: a draft that cites a page that does not exist means no page covers the enquiry.
+    if (citesMissingPage(enq)) {
+      const route = el("button", "btn", "No policy page covers this: hand off to an officer");
+      route.id = "route-btn";
+      route.addEventListener("click", function () {
+        state.results[enq.id] = { outcome: "handed-off", firstActionSec: secondsSinceOpen(enq.id), hadProblem: true };
+        state.editing[enq.id] = false;
+        render();
+      });
+      actions.append(route);
+    }
   }
   box.append(actions);
   box.append(el("p", "note", "Approve only records your decision here. Nothing is sent and the case is not marked resolved. Switching cases keeps your edits."));
@@ -534,7 +554,7 @@ function refreshDraftChecks(enq) {
     banner.textContent = "";
     banner.className = "check-banner " + (total ? "check-bad" : "check-ok");
     banner.append(document.createTextNode(total
-      ? "Citation check: " + total + " problem" + (total === 1 ? "" : "s") + " found. Fix or remove the flagged line" + (total === 1 ? "" : "s") + " before approving."
+      ? "Citation check: " + total + " problem" + (total === 1 ? "" : "s") + " found. Fix or remove the flagged line" + (total === 1 ? "" : "s") + " before approving." + (citesMissingPage(enq) ? " A cited page is not in the policy library, so per the context rules no draft should exist: hand off to an officer." : "")
       : "Citation check: every cited policy page, passage and number matches the policy library."));
   }
   const approve = document.getElementById("approve-btn");
@@ -623,9 +643,147 @@ function approveDraft(enq) {
   render();
 }
 
+// ---------- Context tab (from context-skill.md) ----------
+
+// Runs one test question against the prototype case that stands in for it.
+// "pass" means the draft as written meets the expected answer. "caught" means the citation check flags it anyway.
+function runContextTest(t) {
+  const enq = byId(ENQUIRIES, t.enquiry);
+  const e = t.expect;
+  const caught = enquiryHasProblem(enq);
+
+  if (e.kind === "cites") {
+    const line = (enq.draft || []).find(function (l) {
+      return l.cite && l.cite.policy === e.policy && l.cite.passage === e.passage;
+    });
+    if (!line) return { pass: false, caught: caught, actual: "No line cites " + e.policy + " " + e.passage + "." };
+    const okText = !e.text || line.text.indexOf(e.text) !== -1 || (e.text === "do not need" && /do not need/i.test(line.text));
+    const clean = checkLine(line, line.text).length === 0;
+    return {
+      pass: okText && clean,
+      caught: caught,
+      actual: 'Draft line: "' + line.text + '" cites ' + e.policy + " " + e.passage + "."
+    };
+  }
+
+  // kind "no-draft": the right output is no draft at all.
+  if (enq.draft) {
+    const fakes = enq.draft.filter(function (l) { return l.cite && !byId(POLICIES, l.cite.policy); })
+      .map(function (l) { return l.cite.policy; });
+    return {
+      pass: false,
+      caught: caught,
+      actual: "A draft was written" + (fakes.length ? " and it cites " + fakes.join(", ") + ", which does not exist." : ".")
+    };
+  }
+  if (e.status && enq.status !== e.status) {
+    return { pass: false, caught: false, actual: "No draft, but the status is " + STATUS_LABELS[enq.status] + "." };
+  }
+  if (e.closestFirst && (!enq.closest || enq.closest[0] !== e.closestFirst)) {
+    return { pass: false, caught: false, actual: "No draft, but the first page offered is " + ((enq.closest || [])[0] || "none") + "." };
+  }
+  return {
+    pass: true,
+    caught: false,
+    actual: "No draft. " + STATUS_LABELS[enq.status] + (e.closestFirst ? ". First page offered: " + e.closestFirst + "." : ".")
+  };
+}
+
+function renderTabs() {
+  const bar = el("nav", "tabs");
+  [["cases", "Cases"], ["context", "Context and tests"]].forEach(function (t) {
+    const b = el("button", "tab" + (state.tab === t[0] ? " tab-on" : ""), t[1]);
+    b.addEventListener("click", function () { state.tab = t[0]; render(); });
+    bar.append(b);
+  });
+  return bar;
+}
+
+function renderContext() {
+  const root = document.getElementById("app");
+  root.textContent = "";
+  root.append(renderTabs());
+
+  const page = el("div", "context-page");
+
+  const intro = el("section", "card");
+  intro.append(el("h2", null, "Context for the drafting assistant"));
+  intro.append(el("p", null, CONTEXT.purpose));
+  intro.append(el("p", "note", "From day2-validate/context-skill.md. All content is made up."));
+  page.append(intro);
+
+  // Tests
+  const results = CONTEXT.tests.map(runContextTest);
+  const passed = results.filter(function (r) { return r.pass; }).length;
+  const failedCaught = results.filter(function (r) { return !r.pass && r.caught; }).length;
+  const failedMissed = results.filter(function (r) { return !r.pass && !r.caught; }).length;
+
+  const tests = el("section", "card");
+  tests.append(el("h2", null, "Test questions"));
+  tests.append(el("p", "test-summary",
+    passed + " of " + results.length + " pass as the draft was written. " +
+    (failedCaught ? failedCaught + " fail but " + (failedCaught === 1 ? "is" : "are") + " caught by the citation check before approval. " : "") +
+    (failedMissed ? failedMissed + " fail and " + (failedMissed === 1 ? "is" : "are") + " not caught." : "")));
+  tests.append(el("p", "note", "The prototype has no live assistant. Each question is checked against the pre-written draft for the matching case, so this tests the prototype's own drafts, not a model."));
+
+  const table = el("table", "tests");
+  const head = el("tr");
+  ["#", "Question (made up)", "Expected answer", "What the prototype does", "Result"].forEach(function (h) { head.append(el("th", null, h)); });
+  table.append(head);
+  CONTEXT.tests.forEach(function (t, i) {
+    const r = results[i];
+    const tr = el("tr");
+    const verdict = r.pass ? "Pass" : (r.caught ? "Fail, caught by check" : "Fail, not caught");
+    const cell = el("td");
+    cell.append(el("span", "tag " + (r.pass ? "tag-draft-ready" : (r.caught ? "tag-needs-clarification" : "tag-senior-officer")), verdict));
+    const link = el("button", "btn btn-link btn-tiny", "Open " + t.enquiry);
+    link.addEventListener("click", function () { state.tab = "cases"; selectCase(t.enquiry); });
+    cell.append(link);
+    tr.append(el("td", null, String(i + 1)), el("td", null, t.question), el("td", null, t.expected), el("td", null, r.actual), cell);
+    table.append(tr);
+  });
+  tests.append(table);
+  page.append(tests);
+
+  // Sources
+  const src = el("section", "card");
+  src.append(el("h2", null, "Sources the assistant may cite"));
+  const ul = el("ul", "plain");
+  POLICIES.forEach(function (p) {
+    const li = el("li");
+    li.append(el("strong", null, p.id), document.createTextNode(" · " + p.title + " · updated " + p.updated + " · " + p.passages.length + " passage" + (p.passages.length === 1 ? "" : "s")));
+    ul.append(li);
+  });
+  src.append(ul);
+  src.append(el("p", "note", "Anything not listed is not a source."));
+  page.append(src);
+
+  // Rules
+  const rules = el("section", "card");
+  rules.append(el("h2", null, "Rules"));
+  const ol = el("ol", "plain");
+  CONTEXT.rules.forEach(function (r) { ol.append(el("li", null, r)); });
+  rules.append(ol);
+  rules.append(el("p", "handoff-note", "Open question: " + CONTEXT.openQuestion));
+  page.append(rules);
+
+  // Owner and review
+  const own = el("section", "card");
+  own.append(el("h2", null, "Owner and review"));
+  own.append(el("p", null, CONTEXT.owner));
+  own.append(el("p", "note", "Review this when:"));
+  const rl = el("ul", "plain");
+  CONTEXT.reviewTriggers.forEach(function (r) { rl.append(el("li", null, r)); });
+  own.append(rl);
+  page.append(own);
+
+  root.append(page);
+}
+
 // ---------- Main ----------
 
 function render() {
+  if (state.tab === "context") { renderContext(); return; }
   renderWorkspace();
   const enq = state.currentId ? byId(ENQUIRIES, state.currentId) : null;
   if (enq && enq.draft && !state.results[enq.id]) refreshDraftChecks(enq);

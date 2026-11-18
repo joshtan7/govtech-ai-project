@@ -410,3 +410,30 @@ li .policy-inline { margin: 8px 0 12px; }
 .tag-check { background: #ffe4e6; color: #9f1239; }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .btn:disabled:hover { background: var(--accent); }
+
+/* ---------- Tabs and context page ---------- */
+
+.tabs { display: flex; gap: 6px; margin-bottom: 20px; border-bottom: 1px solid var(--line); }
+.tab {
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 8px 16px;
+  border: none;
+  border-bottom: 3px solid transparent;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.tab:hover { color: var(--text); }
+.tab-on { color: var(--accent); border-bottom-color: var(--accent); }
+
+.context-page { display: flex; flex-direction: column; gap: 20px; max-width: 980px; }
+.plain { margin: 0; padding-left: 20px; }
+.plain li { margin-bottom: 6px; }
+.test-summary { margin: 0 0 4px; font-weight: 650; }
+
+.tests { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 0.86rem; }
+.tests th { text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); padding: 6px 10px; border-bottom: 1px solid var(--line); }
+.tests td { vertical-align: top; padding: 10px; border-bottom: 1px solid #eef0f6; }
+.tests td:first-child { color: var(--muted); font-weight: 700; }
