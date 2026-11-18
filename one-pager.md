@@ -107,7 +107,6 @@ Measure across many officers, per officer and combined. All numbers are made up.
 | Metric | Target | Stop line |
 |---|---|---|
 | Drafts sent as is or after a light edit | 7 in 10 | Below 5 in 10 |
-| Drafts approved as is, with no edit | 6 in 10 by the end of the pilot | None set |
 | Planted errors approved | Under 1 in 10 | Any fake page or passage reaches approval |
 | Citation check on made-up fakes | 3 of 3 flagged, 0 false alarms | Any fake not flagged |
 | Time to first action | Under 30 seconds | Officers regularly stuck past 30 seconds |
