@@ -3,8 +3,11 @@
 // Drafts are pre-written. No AI model is called.
 //
 // draft: lines of the reply. cite = { policy, passage } or null (greeting/closing only).
-// lowConf: true marks a line the (pretend) model is less sure about.
+// confidence: made-up score (0 to 100) for a cited line. Below CONFIDENCE_THRESHOLD is flagged.
 // closest: the three closest policy pages, shown when there is no draft.
+
+// Drafts start only at or above this overall confidence (made up).
+const CONFIDENCE_THRESHOLD = 90;
 
 const ENQUIRIES = [
   {
@@ -17,9 +20,9 @@ const ENQUIRIES = [
     body: "Hi, I have moved house. How do I update my address with you, and do I need to send any documents? (made up)",
     draft: [
       { text: "Thank you for your enquiry about changing your registered address.", cite: null },
-      { text: "You can update your registered address online through the Resident Portal.", cite: { policy: "POL-01", passage: "p1" } },
-      { text: "The change takes effect on the next working day after you submit it.", cite: { policy: "POL-01", passage: "p2" } },
-      { text: "You do not need to upload supporting documents for an online change.", cite: { policy: "POL-01", passage: "p3" } }
+      { text: "You can update your registered address online through the Resident Portal.", cite: { policy: "POL-01", passage: "p1" }, confidence: 97 },
+      { text: "The change takes effect on the next working day after you submit it.", cite: { policy: "POL-01", passage: "p2" }, confidence: 95 },
+      { text: "You do not need to upload supporting documents for an online change.", cite: { policy: "POL-01", passage: "p3" }, confidence: 93 }
     ]
   },
   {
@@ -32,9 +35,9 @@ const ENQUIRIES = [
     body: "I lost my card. What is the fee for a new one and how long will it take? (made up)",
     draft: [
       { text: "Thank you for your enquiry about replacing a lost card.", cite: null },
-      { text: "Please report the loss before you request a replacement.", cite: { policy: "POL-02", passage: "p1" } },
-      { text: "The replacement card fee is $20 (made up).", cite: { policy: "POL-02", passage: "p2" } },
-      { text: "Replacement cards are usually posted within 7 working days (made up).", cite: { policy: "POL-02", passage: "p3" }, lowConf: true }
+      { text: "Please report the loss before you request a replacement.", cite: { policy: "POL-02", passage: "p1" }, confidence: 96 },
+      { text: "The replacement card fee is $20 (made up).", cite: { policy: "POL-02", passage: "p2" }, confidence: 98 },
+      { text: "Replacement cards are usually posted within 7 working days (made up).", cite: { policy: "POL-02", passage: "p3" }, confidence: 82 }
     ]
   },
   {
@@ -47,8 +50,8 @@ const ENQUIRIES = [
     body: "What time is the front desk open? Is it open on public holidays? (made up)",
     draft: [
       { text: "Thank you for your enquiry about front desk hours.", cite: null },
-      { text: "Front desks are open Monday to Friday, 9am to 5pm (made up).", cite: { policy: "POL-03", passage: "p1" } },
-      { text: "Front desks are closed on public holidays.", cite: { policy: "POL-03", passage: "p2" } }
+      { text: "Front desks are open Monday to Friday, 9am to 5pm (made up).", cite: { policy: "POL-03", passage: "p1" }, confidence: 99 },
+      { text: "Front desks are closed on public holidays.", cite: { policy: "POL-03", passage: "p2" }, confidence: 94 }
     ]
   },
   {

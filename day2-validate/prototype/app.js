@@ -5,8 +5,6 @@ const state = {
   view: "inbox",        // "inbox" or "enquiry"
   currentId: null,
   openedAt: 0,          // ms timestamp when the enquiry was opened
-  policyId: null,       // policy page shown in the side panel
-  highlight: null,      // passage id to highlight
   editing: false,
   // Per-enquiry result: { outcome, label, firstActionSec }
   results: {}
@@ -119,9 +117,6 @@ function openEnquiry(id) {
   state.currentId = id;
   state.openedAt = Date.now();
   state.editing = false;
-  state.highlight = null;
-  state.policyId = enq.draft ? enq.draft[0].cite ? enq.draft[0].cite.policy : enq.draft[1].cite.policy
-                             : enq.closest[0];
   render();
 }
 
@@ -144,9 +139,7 @@ function renderEnquiry() {
   back.addEventListener("click", backToInbox);
   root.append(back);
 
-  const grid = el("div", "grid");
   const left = el("div", "col");
-  const right = el("div", "col");
 
   // Enquiry card
   const card = el("section", "card");
@@ -164,10 +157,50 @@ function renderEnquiry() {
     left.append(renderHandoff(enq));
   }
 
-  right.append(renderPolicyPanel());
+  root.append(left);
+}
 
-  grid.append(left, right);
-  root.append(grid);
+// ---------- Confidence and inline policy details ----------
+
+function confLevel(score) {
+  if (score >= CONFIDENCE_THRESHOLD) return "high";
+  if (score >= 80) return "medium";
+  return "low";
+}
+
+// Overall draft confidence = average of the cited lines (made up scores).
+function draftConfidence(enq) {
+  const scores = enq.draft.filter(function (l) { return l.cite; }).map(function (l) { return l.confidence; });
+  return Math.round(scores.reduce(function (a, b) { return a + b; }, 0) / scores.length);
+}
+
+function confBadge(score, prefix) {
+  const level = confLevel(score);
+  const word = level === "high" ? "High" : level === "medium" ? "Medium" : "Low";
+  return el("span", "conf conf-" + level, (prefix || "") + word + " · " + score + "%");
+}
+
+// Policy details shown right below the line or link that opened it.
+function policyBlock(policyId, highlightId) {
+  const policy = byId(POLICIES, policyId);
+  const box = el("div", "policy-inline");
+  const head = el("div", "policy-head");
+  head.append(el("span", "policy-id", policy.id), el("span", "policy-title", policy.title));
+  box.append(head);
+  box.append(el("p", "policy-meta", "Last updated " + policy.updated + " · Owner: " + policy.owner));
+  policy.passages.forEach(function (p) {
+    const node = el("p", "passage" + (highlightId === p.id ? " highlight" : ""));
+    node.append(el("span", "passage-id", p.id + (highlightId === p.id ? " · cited" : "") + " "), document.createTextNode(p.text));
+    box.append(node);
+  });
+  return box;
+}
+
+// Show or hide a policy block right after `anchor`. Does not redraw, so edits are kept.
+function togglePolicy(anchor, policyId, highlightId) {
+  const next = anchor.nextElementSibling;
+  if (next && next.classList.contains("policy-inline")) { next.remove(); return; }
+  anchor.after(policyBlock(policyId, highlightId));
 }
 
 // Draft with a citation after each line and the action buttons.
@@ -175,33 +208,36 @@ function renderDraft(enq) {
   const result = state.results[enq.id];
   const box = el("section", "card draft");
   box.append(el("h2", null, "Draft reply"));
-  box.append(el("p", "watermark", "DRAFT · for officer review · not sent"));
+  const top = el("div", "draft-top");
+  top.append(el("p", "watermark", "DRAFT · for officer review · not sent"));
+  top.append(confBadge(draftConfidence(enq), "Draft confidence: "));
+  box.append(top);
 
   const lines = el("div", "draft-lines");
   enq.draft.forEach(function (line, i) {
-    const wrap = el("p", "draft-line");
-    const text = el("span", "draft-text" + (line.lowConf ? " low-conf" : ""), line.text);
+    const flagged = line.cite && line.confidence < CONFIDENCE_THRESHOLD;
+    const wrap = el("div", "draft-block");
+    const row = el("p", "draft-line");
+    const text = el("span", "draft-text" + (flagged ? " low-conf" : ""), line.text);
     text.dataset.index = String(i);
     text.contentEditable = state.editing && !result ? "true" : "false";
-    if (line.lowConf) text.title = "Lower confidence. Check this line against the cited passage.";
-    wrap.append(text);
+    row.append(text);
 
     if (line.cite) {
-      const c = el("button", "cite", "[" + line.cite.policy + " " + line.cite.passage + "]");
-      c.title = "Show the cited passage";
+      const c = el("button", "cite", line.cite.policy + " " + line.cite.passage + " ▾");
+      c.title = "Show the policy page below this line";
+      row.append(" ", c, " ", confBadge(line.confidence));
       c.addEventListener("click", function () {
-        state.policyId = line.cite.policy;
-        state.highlight = line.cite.passage;
-        renderPolicyInto();
+        togglePolicy(row, line.cite.policy, line.cite.passage);
       });
-      wrap.append(" ", c);
     }
+    wrap.append(row);
     lines.append(wrap);
   });
   box.append(lines);
 
-  if (enq.draft.some(function (l) { return l.lowConf; })) {
-    box.append(el("p", "note", "Dotted underline = lower confidence. Check it against the cited passage."));
+  if (enq.draft.some(function (l) { return l.cite && l.confidence < CONFIDENCE_THRESHOLD; })) {
+    box.append(el("p", "note", "Dotted underline = confidence below " + CONFIDENCE_THRESHOLD + "% (made up). Check that line against its cited passage."));
   }
 
   const actions = el("div", "actions");
@@ -247,12 +283,11 @@ function renderHandoff(enq) {
   enq.closest.forEach(function (pid) {
     const li = el("li");
     const b = el("button", "btn btn-link", pid + " · " + byId(POLICIES, pid).title);
-    b.addEventListener("click", function () {
-      state.policyId = pid;
-      state.highlight = null;
-      renderPolicyInto();
-    });
     li.append(b);
+    b.addEventListener("click", function () {
+      const open = li.querySelector(".policy-inline");
+      if (open) open.remove(); else li.append(policyBlock(pid, null));
+    });
     ul.append(li);
   });
   box.append(ul);
@@ -310,36 +345,6 @@ function approveDraft(enq) {
   state.results[enq.id] = { outcome: outcome, firstActionSec: secondsSinceOpen() };
   state.editing = false;
   render();
-}
-
-// ---------- Policy side panel ----------
-
-function renderPolicyPanel() {
-  const box = el("section", "card policy-panel");
-  box.id = "policy-panel";
-  fillPolicy(box);
-  return box;
-}
-
-function renderPolicyInto() {
-  const box = document.getElementById("policy-panel");
-  box.textContent = "";
-  fillPolicy(box);
-  const hit = box.querySelector(".passage.highlight");
-  if (hit && hit.scrollIntoView) hit.scrollIntoView({ block: "nearest" });
-}
-
-function fillPolicy(box) {
-  box.append(el("h2", null, "Policy page (made up)"));
-  const policy = byId(POLICIES, state.policyId);
-  box.append(el("p", "row-id", policy.id));
-  box.append(el("h3", null, policy.title));
-  policy.passages.forEach(function (p) {
-    const cls = "passage" + (state.highlight === p.id ? " highlight" : "");
-    const node = el("p", cls);
-    node.append(el("span", "passage-id", p.id + " "), document.createTextNode(p.text));
-    box.append(node);
-  });
 }
 
 // ---------- Main ----------
