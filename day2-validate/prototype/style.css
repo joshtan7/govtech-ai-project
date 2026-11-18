@@ -382,3 +382,31 @@ li .policy-inline { margin: 8px 0 12px; }
   .workspace { grid-template-columns: 1fr; }
   .queue { position: static; max-height: 320px; }
 }
+
+/* ---------- Citation check (hallucination test) ---------- */
+
+.check-banner {
+  margin: 0 0 14px;
+  padding: 9px 14px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.check-ok { background: #dcfce7; color: #166534; }
+.check-bad { background: #fee2e2; color: #991b1b; }
+
+.line-problem-on {
+  margin: 2px 0 8px;
+  padding: 8px 12px;
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  border-radius: 8px;
+}
+.line-problem-text { margin: 0; font-size: 0.84rem; font-weight: 600; color: #9f1239; }
+
+.policy-missing { border-left-color: #e11d48; background: #fff1f2; }
+.policy-missing-title { margin: 0 0 4px; font-size: 0.88rem; font-weight: 700; color: #9f1239; }
+
+.tag-check { background: #ffe4e6; color: #9f1239; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn:disabled:hover { background: var(--accent); }

@@ -6,15 +6,16 @@ All enquiries, drafts and policy pages in this prototype are made up. No real re
 
 ## What it does
 
-An officer opens the inbox and works through 6 made-up enquiries.
+An officer opens the inbox and works through 8 made-up enquiries.
 
 - **Case workspace:** the queue stays on the left while you work a case on the right. You can search, filter (All, To do, Done), press J or K to move between cases, or use Previous and Next.
 - **Edits are kept:** switch to another case and come back, and your edited draft is still there. A case with unsaved edits shows an Edited tag in the queue.
 - **After a decision:** the queue marks the case done, and a button jumps to the next open case.
 - **Drafts:** pre-written, with a citation after every claim. Every cited line shows a made-up confidence score, and the draft shows an overall confidence. The policy page is open by default right below each cited line, with the cited passage highlighted, when it was last updated and who owns it. Click the citation to hide or show it, or "Show all passages" to see the whole page. Lines below 90% (made up) have a dotted underline.
+- **Citation check (tests the "AI invents policy" risk):** ENQ-007 and ENQ-008 carry deliberate fakes, all made up: a policy page that does not exist, a passage that does not exist, and a wrong fee. Each cited line is checked against the made-up policy library. A failed line shows a red warning, and the case is tagged "Citation check" in the queue. Approve is blocked until the officer fixes the line or uses "Remove this line". The check compares page, passage and numbers only. It does not catch a wrong claim in words.
 - **Approve, Edit, Restore original:** Approve only records the decision. Edit changes the lines in place. Restore original puts the draft back.
 - **No draft cases:** shows why, the three closest policy pages, and a hand-off button.
-- **Pilot tally:** at the top of the inbox. It counts drafts approved as is, after a light edit, and after a heavy rewrite, plus enquiries where the first action took over 30 seconds.
+- **Pilot tally:** at the top of the inbox. It counts drafts approved as is, after a light edit, and after a heavy rewrite, plus enquiries where the first action took over 30 seconds. It also shows the citation check self-test (fakes flagged, false alarms) and how many fakes officers fixed before approving.
 
 An edit counts as a heavy rewrite when more than half the words are new. This is a rough rule for the prototype.
 
