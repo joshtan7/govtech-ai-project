@@ -8,7 +8,7 @@ All data, numbers, quotes and policy pages here are synthetic (made up). Status:
 
 - Read: `day2-validate/living-prd.md`, `day3-build/CLAUDE.md` (with the rule 6 change), `day3-build/agent-run-log.md`, `one-pager.md`, `day2-validate/context-skill.md`.
 - **Not found:** `day2-validate/handoff-note.md` and `day3-build/agent-control-panel.md`. They do not exist in the repo. Nothing was invented to stand in for them. If they hold decisions, add those here.
-- **`SCENARIO-PICK.md` is blank.** Every other file says Scenario A, so this PRD uses A.
+- **`SCENARIO-PICK.md`** now says Scenario A, which matches every other file.
 - `living-prd.md` is only on the open pull request #21 branch, not on `main`.
 
 ---
@@ -242,5 +242,4 @@ None of these is decided. Each needs a named owner.
 | 11 | After "Remove this line", how do we know the draft still answers the question? | The check does not look at relevance. | Learner, engineering |
 | 12 | Are images in scope later? | 1 in 5 enquiries have one (made up). Out of scope now. | Learner |
 | 13 | How does the learner reply to the chief executive sponsor's objection? | Still unanswered in `one-pager.md`. | Learner |
-| 14 | Fill in `SCENARIO-PICK.md`. | It is blank and every file assumes A. | Learner |
-| 15 | Do `handoff-note.md` and `agent-control-panel.md` need to exist? | This PRD was drafted without them. | Learner |
+| 14 | Do `handoff-note.md` and `agent-control-panel.md` need to exist? | This PRD was drafted without them. | Learner |
