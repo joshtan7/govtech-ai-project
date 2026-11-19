@@ -29,7 +29,11 @@ These are yours and the policy team's to choose. I have not chosen them.
 5. **Whether the citation check should ever be a person's call.** It is auto and cannot be skipped in this proposal. If it flags a line the agent cannot fix, the agent hands off.
 6. **Named gaps from the stress runs.** `CLAUDE.md` has no rule for an empty enquiry or for an enquiry that cites a page not in the library. Both were read as hand-off. The policy team should confirm.
 
-Decided: this per-tool table wins over the per-action table in `ai-prd.md` (see below). Items 1 to 6 are still open.
+Decided by the learner:
+- This per-tool table wins over the per-action table in `ai-prd.md` (see below).
+- Write draft stays **auto**, with the officer alone as the check. No extra gate before a draft and no business owner sign-off, because an officer already verifies every draft and that is the current business process. Not yet confirmed with the business owner. See `ai-prd.md`, open decision 15.
+
+Items 1 to 6 are otherwise still open.
 
 ## Which table wins
 
