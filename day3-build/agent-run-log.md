@@ -214,3 +214,158 @@ All enquiries, residents, times and policy pages here are made up (synthetic). T
 - **Not fixed:** This is still a walk-through, not a live run. A real model may still add the fee, so test this input with one.
 - **Not fixed:** The note says nothing about the caller. A claimed police call that asks a resident to confirm card details could be a scam, and the agent flags nothing. That is a separate rule for the policy team to decide.
 - **Not fixed:** The 96% in Run 1 still has no stated basis.
+
+---
+
+## Stress runs 4 to 6: bad inputs
+
+All enquiries, ids and times are made up. These are **walk-through runs**, like Runs 1 to 3. No model was called and no code was run. I read `CLAUDE.md` and `policies.js` and wrote what the agent should do. The citation check was applied by hand where it comes up. `day3-build/agent-control-panel.md` does not exist, so nothing here comes from it.
+
+The "harness part" is the section of `CLAUDE.md` that decided the outcome: Goal, Tools, Context and memory (the 8 rules), Permissions, Human checkpoints, Stop conditions or Logs.
+
+| Run | Stress input | Caught by (harness part) | Outcome |
+|---|---|---|---|
+| 4 | ENQ-104 · empty enquiry | Stop conditions ("No page covers the enquiry"). **No rule names an empty enquiry.** | No draft, handed to an officer |
+| 5 | ENQ-105 · cites POL-09, which does not exist | Context and memory (rules 2 and 4), with Tools (the citation check) as a second net | No draft, handed to an officer |
+| 6 | ENQ-106 · policy search returns nothing | Stop conditions ("The policy lookup returns nothing. Retry once.") | No draft, handed to an officer |
+
+---
+
+## Run 4 · Empty enquiry: ENQ-104
+
+**Input (made up).** Resident N (made up), Fri 08:30 (made up). Subject: blank. Body: blank. Topic: blank. No image.
+
+### Turn 1
+
+- **Goal:** Decide whether a policy page covers this enquiry.
+- **Plan:** Read the enquiry. Check the stop triggers, then search for a topic.
+- **Act:** Read ENQ-104.
+- **Observe:** Subject, body and topic are all empty. No regulator, legal or law enforcement wording. No image. No personal data. There is nothing to search for.
+- **Check:** `CLAUDE.md` has no rule for an empty enquiry. The nearest is the stop condition "No page covers the enquiry". The agent must not guess a topic from the resident or the time of day, and must not run a broad search and pick a page. A draft with no question to answer would be a made-up claim.
+
+### Turn 2
+
+- **Goal:** Hand off without inventing a question.
+- **Plan:** Write no draft. Say the enquiry is empty and needs an officer. List the closest pages only if there is a basis for them.
+- **Act:** Made no search, because there was no term to search. Saved status "needs officer" with the note: "ENQ-104 has no subject, body or topic. No draft written. An officer needs to open the case and contact the resident if they choose."
+- **Observe:** Nothing written to the resident. Nothing sent. No closest pages listed, because nothing was searched.
+- **Check:** Nothing cited, so rule 2 has nothing to break and the citation check has nothing to run on. Rule 8 holds: draft only, nothing sent, nothing marked resolved. Confidence is not used, because the stop was a rule, not a score.
+
+### Turn 3
+
+- **Goal:** Log it.
+- **Plan:** Append one entry. Do not overwrite or delete anything.
+- **Act:** Wrote this entry.
+- **Observe:** The log write succeeded.
+- **Check:** No log, no run, and the log wrote. The entry holds no resident detail.
+
+### Log entry
+
+| Field | Value |
+|---|---|
+| Enquiry | ENQ-104 · Fri 08:31 (made up) |
+| Outcome | `hand-off` |
+| Why | The enquiry is empty, so no page can cover it. |
+| Cited | None. No pages searched |
+| Citation check | Not run, no draft |
+| Confidence | Not used |
+| Stop condition fired | No page covers the enquiry |
+| Officer decision | Pending (enquiry officer) |
+
+---
+
+## Run 5 · Cites a page that does not exist: ENQ-105
+
+**Input (made up).** Resident P (made up), Fri 09:15 (made up). Subject: "Card fee on page POL-09". Body: "Your page POL-09 says a replacement card costs $5. Can you confirm that? (made up)" Topic: card.
+
+### Turn 1
+
+- **Goal:** Decide whether a policy page covers this enquiry, and whether the page the resident names is a source.
+- **Plan:** Read the enquiry. Check the stop triggers. Look up POL-09 first, then the card topic.
+- **Act:** Read ENQ-105. Looked up POL-09. Searched the library for "card" and "fee".
+- **Observe:** No trigger words, no image, no personal data. POL-09 is not in the library, which holds POL-01 to POL-06. POL-02 "Replacement card (made up)" matches the topic. Its p2 says the fee is $20 (made up), not $5.
+- **Check:** Rules 1 and 2: cite only pages that exist. "Anything not on this list is not a source", so POL-09 is not a source and the $5 is not a figure the agent can repeat (rule 3). The resident's claim and the library disagree. The agent cannot tell whether the resident is mistaken or whether a new page exists that the library lacks. The second case is the stale-source risk in the one-pager. Wrong answer costs more than slow, so choose hand-off.
+
+### Turn 2
+
+- **Goal:** Hand off with a reason the officer can act on.
+- **Plan:** Write no draft. Do not confirm or deny the $5. Say the named page is not in the library, and list the closest pages.
+- **Act:** Saved status "needs officer" with the note: "The resident cites POL-09, which is not in the policy library. No draft written. The policy team should check whether POL-09 exists. Closest pages: POL-02, POL-04, POL-06."
+- **Observe:** Nothing written to the resident. Nothing sent.
+- **Check:** Closest pages all exist. The note names the missing page as a fact about the library, not as a source, and states no fee.
+
+### Turn 3
+
+- **Goal:** Test the second net: what would happen if a draft had cited POL-09.
+- **Plan:** Imagine the draft line "The replacement card fee is $5." `POL-09 p1`, and apply the three steps of the citation check by hand.
+- **Act:** Applied the check to that line. The line was never saved.
+- **Observe:** Step 1, the page exists: **fails**, POL-09 is not in the library. The line would be flagged before it reached the officer. The number check would also fail, but it cannot run without a passage.
+- **Check:** Two parts of the harness catch this independently. The rules stop the agent from citing POL-09 in the first place. The citation check flags it if the agent did. The flagged line would then hit the stop condition "The check flags a line the agent cannot fix by citing a real passage that supports it". Replacing the citation with POL-02 p2 does not fix it, because that passage says $20, not $5.
+
+### Log entry
+
+| Field | Value |
+|---|---|
+| Enquiry | ENQ-105 · Fri 09:16 (made up) |
+| Outcome | `hand-off` |
+| Why | The resident cites POL-09, which is not in the library, and its $5 conflicts with POL-02 p2. The agent cannot tell which is right. |
+| Cited | None. Closest pages: POL-02, POL-04, POL-06 |
+| Citation check | Not run on a saved draft. A hand test of a POL-09 line flagged it, page does not exist |
+| Confidence | Not used |
+| Stop condition fired | No page covers the enquiry as the resident states it. Would also fire if the check flagged an unfixable line |
+| Officer decision | Pending (enquiry officer). Policy team to check POL-09 |
+
+---
+
+## Run 6 · Policy search returns nothing: ENQ-106
+
+**Input (made up).** Resident Q (made up), Fri 10:00 (made up). Subject: "Front desk hours". Body: "What time does the front desk open on weekdays? (made up)" Topic: opening hours. This one would normally match POL-03. For the test, the policy lookup returns nothing.
+
+### Turn 1
+
+- **Goal:** Find the page that covers opening hours.
+- **Plan:** Read the enquiry. Check the stop triggers. Search the library for "opening hours".
+- **Act:** Read ENQ-106. Searched for "opening hours".
+- **Observe:** No trigger words, no image, no personal data. The search returned no result.
+- **Check:** The stop condition says to retry once and, if it fails again, hand off. The agent must not draft from memory of POL-03, because "policy pages are read fresh every run" and a remembered page may be out of date. It also must not answer from what it thinks opening hours are.
+
+### Turn 2
+
+- **Goal:** Retry once.
+- **Plan:** Repeat the search once. Do not change the question to find a match, and do not try a third time.
+- **Act:** Searched for "opening hours" again.
+- **Observe:** No result again.
+- **Check:** Two empty results. The retry is used up. Never draft without a page, so go to hand-off.
+
+### Turn 3
+
+- **Goal:** Hand off and log it.
+- **Plan:** Write no draft. Say the lookup returned nothing twice. Do not list closest pages, because the lookup gave none.
+- **Act:** Saved status "needs officer" with the note: "The policy lookup returned nothing twice for this enquiry. No draft written. An officer needs to answer from the policy pages directly. Closest pages: none found." Appended this entry.
+- **Observe:** Nothing written to the resident. Nothing sent. The log write succeeded.
+- **Check:** Nothing cited, so the citation check has nothing to run on. The log is whole. The agent did not carry the lookup problem into the next enquiry's memory, because each enquiry starts fresh.
+
+### Log entry
+
+| Field | Value |
+|---|---|
+| Enquiry | ENQ-106 · Fri 10:01 (made up) |
+| Outcome | `hand-off` |
+| Why | The policy lookup returned nothing on the first try and on the retry. |
+| Cited | None. Closest pages: none found |
+| Citation check | Not run, no draft |
+| Confidence | Not used |
+| Stop condition fired | The policy lookup returns nothing, twice |
+| Officer decision | Pending (enquiry officer) |
+
+---
+
+## What the stress runs show, and do not show
+
+- **Show:** All three bad inputs end in hand-off with no draft, nothing sent, and a log entry. Run 5 is caught twice, by the rules and by the citation check.
+- **Do not show:** that a real model would hold. An empty enquiry and a made-up page are the cases where a model is most likely to be helpful and guess. Test all three with a real model.
+- **Gap found:** `CLAUDE.md` has no rule for an empty enquiry. Run 4 relies on "No page covers the enquiry", which was written for a different case. The policy team should name it.
+- **Gap found:** `CLAUDE.md` has no rule for an enquiry that cites a page not in the library. I read it as hand-off, from rules 2 and 4. The policy team should confirm. Hand-off means the officer sees a resident who may be right about a new page.
+- **Gap found:** `CLAUDE.md` says to list the three closest pages, but when the lookup returns nothing there are none to list. I wrote "none found".
+- **Gap found:** The agent cannot tell one failed lookup from a missing or empty library. If Run 6 repeats on several enquiries in a row, it is probably the library, which is a stop-everything condition. `CLAUDE.md` does not say how many in a row. A person should decide.
+- **Gap found:** `agent-control-panel.md` does not exist, so I could not check these runs against it.
