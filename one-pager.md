@@ -81,11 +81,31 @@ Guardrails:
 
 ## Roles and operating model
 
+Roles (Proposed, full detail in `day3-build/operating-model.md`):
+
+- Product owner: decides scope, permissions, go-live, incidents and retirement.
+- Engineer: chooses the model, retrieval and citation check, and how blocked actions are enforced.
 - Enquiry officer: reviews, edits and approves every reply.
-- Duty officer: receives anything citizen-facing. The assistant never sends.
+- Duty officer: sends anything citizen-facing. The assistant never sends. Acts first in an incident.
 - Human lead: takes law enforcement, legal and regulator matters.
-- Policy team (made up): owns the sources and the rules. Reviews them when a page changes.
+- Policy team (made up): owns the sources and the rules. Reviews them when a page changes and confirms the permission settings.
 - Pilot facilitator: runs the test and collates results across officers.
+- Executive sponsor (also the business owner): funds the work and owns the enquiry service. Is told about key calls, and first outside the team when something goes wrong. Not a decider.
+
+Decision rights:
+
+| Harness part | Who decides | Who is consulted | Who is told |
+|---|---|---|---|
+| Scope | Product owner | Policy team, enquiry officers, engineer | Duty officer, human lead, pilot facilitator, executive sponsor |
+| Permissions | Product owner | Policy team, engineer | Enquiry officers, pilot facilitator |
+| Vendor and model | Engineer | Product owner, policy team | Pilot facilitator, executive sponsor |
+| Go-live | Product owner | Pilot facilitator, policy team, engineer, enquiry officers | Duty officer, human lead, executive sponsor |
+| Incident | Product owner decides to switch the agent off and when to switch it back on. Duty officer acts first by stopping sending. Engineer may switch the agent off if the product owner can't be reached | Engineer, policy team | Executive sponsor (the business owner), told the same day by the product owner. Pilot facilitator, human lead |
+| Retire | Product owner | Pilot facilitator, policy team, executive sponsor, engineer | Enquiry officers, duty officer, human lead |
+
+If a wrong answer reaches a resident: the duty officer stops sending and tells the product owner. The product owner decides to switch the agent off and the engineer does it. The product owner tells the executive sponsor (the business owner) the same day. Times and out-of-hours cover are not set yet.
+
+No role can let the assistant send a reply or mark a case resolved. People decide the stop line, not the assistant.
 
 ## Strategy and roadmap
 
