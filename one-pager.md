@@ -155,7 +155,6 @@ Not decided yet. No officer has used the prototype.
 
 ## Open issues
 
-- `SCENARIO-PICK.md` is still blank.
 - Should drafts cite the case ID as well as the policy page? The skill file says case ID.
 - The check cannot catch a wrong claim in words.
 - Where do the 3 days go? We need a breakdown of waiting versus handling time, in a later report view.
