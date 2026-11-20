@@ -225,22 +225,26 @@ These are for the engineer. This PRD does not choose them.
 
 ## Open decisions
 
-None of these is decided. Each needs a named owner.
+Only decision 15 is decided. The rest are open. The Recommendation column is a **Proposed** view from review, not a decision. Each decision needs a named owner. I have no recommendation for 13 because the objection is not written down.
 
-| # | Decision | Why it matters | Who decides |
-|---|---|---|---|
-| 1 | Confirm or change every setting in Permissions. | The whole table is Proposed. | Learner, policy team |
-| 2 | Should the agent remove a flagged line itself (row 8), or only flag it? | A removed line can leave a real but irrelevant citation. | Learner |
-| 3 | Cite policy page and passage only, or the case ID as well? | `skill-file.md` says case ID, the prototype uses page and passage. | Policy team |
-| 4 | A mixed enquiry (a covered question plus a regulator or police mention): is "hand off, no answer at all" right? | I read rule 6 that way. It was not confirmed. | Policy team |
-| 5 | What to do with a claimed police or regulator caller who asks a resident for card details. | It could be a scam. The agent flags nothing. | Policy team |
-| 6 | How is confidence produced, and is 90% the right line? | The planted fakes scored 93 to 95%. | Learner, engineering |
-| 7 | Which "sent as is" target: 7 in 10 (one-pager) or 6 in 10 (`ai-ux-flow.md`)? One counts light edits, the other does not. | The pilot needs one pass line. | Learner |
-| 8 | Is "more than half the words are new" the right line for a heavy rewrite? | Rough and unvalidated. | Learner, facilitator |
-| 9 | Where do the output folder and the run log live? `CLAUDE.md` names no paths. | The agent cannot write until it has one. | Learner, engineering |
-| 10 | Who reads the log weekly, and what do they do with a missed fake? | Missed fakes should reach the policy team. | Facilitator, policy team |
-| 11 | After "Remove this line", how do we know the draft still answers the question? | The check does not look at relevance. | Learner, engineering |
-| 12 | Are images in scope later? | 1 in 5 enquiries have one (made up). Out of scope now. | Learner |
-| 13 | How does the learner reply to the chief executive sponsor's objection? | Still unanswered in `one-pager.md`. | Learner |
-| 14 | Do `handoff-note.md` and `agent-control-panel.md` need to exist? | This PRD was drafted without them. `agent-control-panel.md` now exists. | Learner |
-| 15 | **Decided by the learner:** Write draft stays auto, and the officer alone is the check. No extra gate before a draft is written and no business owner sign-off. | Raised on review as the business owner. The only gate before a draft is written is 90% confidence, and the planted fakes scored 93 to 95%. The citation check cannot see a wrong claim in words. Whether officers approve without reading is not measured yet. The learner's reason: an officer already verifies every draft, so this follows the current business process. This holds unless the business process requires the business owner, which the learner does not think it does. **Not yet confirmed with the business owner.** The pilot still measures planted errors approved (under 1 in 10), and the stop line stands. | Learner (decided) |
+| # | Decision | Why it matters | Recommendation (Proposed) | Who decides |
+|---|---|---|---|---|
+| 1 | Confirm or change every setting in Permissions. | The whole table is Proposed. | Keep all five tools as proposed (all auto). Write draft is covered by decision 15. The policy team confirms. | Learner, policy team |
+| 2 | Should the agent remove a flagged line itself (row 8), or only flag it? | A removed line can leave a real but irrelevant citation. | Flag only. If a line cannot be fixed, hand off the whole draft. This changes a stop condition in `CLAUDE.md`. | Learner |
+| 3 | Cite policy page and passage only, or the case ID as well? | `skill-file.md` says case ID, the prototype uses page and passage. | Page and passage only, because the check can verify them against the library. Keep the case ID in the log. | Policy team |
+| 4 | A mixed enquiry (a covered question plus a regulator or police mention): is "hand off, no answer at all" right? | I read rule 6 that way. It was not confirmed. | Yes. POL-05 p1 says do not draft a reply, and a wrong answer costs more than a slow one. | Policy team |
+| 5 | What to do with a claimed police or regulator caller who asks a resident for card details. | It could be a scam. The agent flags nothing. | Add one fixed line to the hand-off note, such as "caller asked the resident for details, possible scam". It answers nothing, so it does not break rule 6. Medium confidence. | Policy team |
+| 6 | How is confidence produced, and is 90% the right line? | The planted fakes scored 93 to 95%. | Do not treat 90% as a safety gate. Keep it as a hint and calibrate it on the 50 test enquiries. | Learner, engineering |
+| 7 | Which "sent as is" target: 7 in 10 (one-pager) or 6 in 10 (`ai-ux-flow.md`)? One counts light edits, the other does not. | The pilot needs one pass line. | 7 in 10, and drop 6 in 10. The hypothesis, metrics plan and stop line all count light edits. `ai-ux-flow.md` was not read for this. | Learner |
+| 8 | Is "more than half the words are new" the right line for a heavy rewrite? | Rough and unvalidated. | Keep it for the pilot. The facilitator compares it with officers' own judgement on a sample. | Learner, facilitator |
+| 9 | Where do the output folder and the run log live? `CLAUDE.md` names no paths. | The agent cannot write until it has one. | A folder in the repo for drafts, and keep `agent-run-log.md` as the log. Engineering confirms. | Learner, engineering |
+| 10 | Who reads the log weekly, and what do they do with a missed fake? | Missed fakes should reach the policy team. | The facilitator reads it. Any missed fake goes to the policy team the same week. | Facilitator, policy team |
+| 11 | After "Remove this line", how do we know the draft still answers the question? | The check does not look at relevance. | Goes away if decision 2 is flag only. | Learner, engineering |
+| 12 | Are images in scope later? | 1 in 5 enquiries have one (made up). Out of scope now. | Out of scope for now. Revisit after the pilot. | Learner |
+| 13 | How does the learner reply to the chief executive sponsor's objection? | Still unanswered in `one-pager.md`. | None. The objection is not written down. | Learner |
+| 14 | Do `handoff-note.md` and `agent-control-panel.md` need to exist? | This PRD was drafted without them. `agent-control-panel.md` now exists. | `agent-control-panel.md` exists. Skip `handoff-note.md`, because the note format is in rule 6 of `CLAUDE.md`. | Learner |
+| 15 | **Decided by the learner:** Write draft stays auto, and the officer alone is the check. No extra gate before a draft is written and no business owner sign-off. | Raised on review as the business owner. The only gate before a draft is written is 90% confidence, and the planted fakes scored 93 to 95%. The citation check cannot see a wrong claim in words. Whether officers approve without reading is not measured yet. The learner's reason: an officer already verifies every draft, so this follows the current business process. This holds unless the business process requires the business owner, which the learner does not think it does. **Not yet confirmed with the business owner.** The pilot still measures planted errors approved (under 1 in 10), and the stop line stands. | Decided. | Learner (decided) |
+| 16 | How many empty policy lookups in a row mean the library is broken and everything stops? | `CLAUDE.md` says retry once for one enquiry only. Stress run 6. | Stop everything after 3 in a row. This number is a guess. | Learner |
+| 17 | Does saving a "needs officer" note with no draft count as Write draft, or is it its own tool? | Stress runs 4 to 6 all saved a note with no draft. | Its own tool, "Write status note" (draft, auto). | Learner |
+| 18 | An empty enquiry: confirm hand-off with no draft? | `CLAUDE.md` has no rule for it. Stress run 4. | Confirm hand-off. | Policy team |
+| 19 | An enquiry that cites a page not in the library: confirm hand-off? | `CLAUDE.md` has no rule for it. Stress run 5. The library may be stale. | Confirm hand-off, with a note to the policy team to check the page. | Policy team |
